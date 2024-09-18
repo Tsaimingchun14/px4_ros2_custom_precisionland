@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>apriltag_viz</name>
+  <version>0.1.0</version>
+  <description>Visualisation for detected AprilTags</description>
+  <maintainer email="Rauch.Christian@gmx.de"></maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>rclcpp_components</depend>
+  <depend>image_transport</depend>
+  <depend>cv_bridge</depend>
+  <depend>sensor_msgs</depend>
+  <depend>apriltag_msgs</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
