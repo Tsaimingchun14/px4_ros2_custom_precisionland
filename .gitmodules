@@ -7,3 +7,6 @@
 [submodule "src/apriltag_msgs"]
 	path = src/apriltag_msgs
 	url = https://github.com/christianrauch/apriltag_msgs
+[submodule "src/px4-ros2-interface-lib"]
+	path = src/px4-ros2-interface-lib
+	url = https://github.com/Auterion/px4-ros2-interface-lib.git
