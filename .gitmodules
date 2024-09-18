@@ -1,0 +1,12 @@
+[submodule "src/px4_msgs"]
+	path = src/px4_msgs
+	url = https://github.com/PX4/px4_msgs.git
+[submodule "src/px4-ros2-interface-lib"]
+	path = src/px4-ros2-interface-lib
+	url = https://github.com/dakejahl/px4-ros2-interface-lib.git
+[submodule "src/apriltag_ros"]
+	path = src/apriltag_ros
+	url = https://github.com/christianrauch/apriltag_ros.git
+[submodule "src/apriltag_msgs"]
+	path = src/apriltag_msgs
+	url = https://github.com/christianrauch/apriltag_msgs
