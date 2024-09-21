@@ -8,21 +8,22 @@
 #include <px4_ros2/control/setpoint_types/experimental/trajectory.hpp>
 
 #include <rclcpp/rclcpp.hpp>
+//#include <geometry_msgs/msg/pose_stamped.hpp>
 #include <cmath>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
+//#include <geometry_msgs/msg/pose.hpp>
 #include <geometry_msgs/msg/quaternion.hpp>
 #include <vector>
-#include <tf2_ros/buffer.h>
-#include <tf2_ros/transform_listener.h>
-#include <geometry_msgs/msg/transform_stamped.hpp>
+#include "tf2_ros/transform_listener.h"
+#include "tf2_ros/buffer.h"
 
 class PrecisionLand : public px4_ros2::ModeBase
 {
 public:
 	explicit PrecisionLand(rclcpp::Node& node);
 
-	void targetPoseCallback(const geometry_msgs::msg::Transform::SharedPtr msg);
+	void targetPoseCallback();
 	void vehicleLandDetectedCallback(const px4_msgs::msg::VehicleLandDetected::SharedPtr msg);
 
 	// See ModeBasep
@@ -60,15 +61,12 @@ private:
 
 	// ros2
 	rclcpp::Node& _node;
-	//rclcpp::Subscription<geometry_msgs::msg::Transform>::SharedPtr _target_pose_sub;
-	//------------Declare shared pointers for tf2 buffer and listener
-  std::shared_ptr<tf2_ros::Buffer> _tf_buffer;
-  std::shared_ptr<tf2_ros::TransformListener> _tf_listener;
-    
-  // Declare a timer to periodically check for the transform
-  rclcpp::TimerBase::SharedPtr _timer;
-	geometry_msgs::msg::TransformStamped _temp_transform;
-	//---------------------------------------------------------------
+	//rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr _target_pose_sub;
+	//-------------------------------------
+	rclcpp::TimerBase::SharedPtr _timer{nullptr};
+	std::shared_ptr<tf2_ros::TransformListener> _tf_listener{nullptr};
+  std::unique_ptr<tf2_ros::Buffer> _tf_buffer;
+	//-------------------------------------
 	rclcpp::Subscription<px4_msgs::msg::VehicleLandDetected>::SharedPtr _vehicle_land_detected_sub;
 
 	// px4_ros2_cpp

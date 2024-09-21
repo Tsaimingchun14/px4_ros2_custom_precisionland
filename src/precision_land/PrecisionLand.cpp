@@ -4,6 +4,8 @@
 #include <px4_ros2/utils/geometry.hpp>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
+#include "geometry_msgs/msg/transform_stamped.hpp"
+#include "tf2/exceptions.h"
 
 static const std::string kModeName = "PrecisionLandCustom";
 static const bool kEnableDebugOutput = true;
@@ -21,19 +23,9 @@ PrecisionLand::PrecisionLand(rclcpp::Node& node)
 
 	_vehicle_attitude = std::make_shared<px4_ros2::OdometryAttitude>(*this);
 
-	// _target_pose_sub = _node.create_subscription<geometry_msgs::msg::Transform>("/target_pose",
+	// _target_pose_sub = _node.create_subscription<geometry_msgs::msg::PoseStamped>("/target_pose",
 	// 		   rclcpp::QoS(1).best_effort(), std::bind(&PrecisionLand::targetPoseCallback, this, std::placeholders::_1));
-	_tf_buffer = std::make_shared<tf2_ros::Buffer>(this->get_clock());
-  _tf_listener = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
-
-  // Timer or any other mechanism to periodically check for the transform
-  _timer = this->create_wall_timer(
-            std::chrono::seconds(0.033),
-            [this]() -> void {
-                this->targetPoseCallback();
-            }
-  );
-
+	
 	_vehicle_land_detected_sub = _node.create_subscription<px4_msgs::msg::VehicleLandDetected>("/fmu/out/vehicle_land_detected",
 				     rclcpp::QoS(1).best_effort(), std::bind(&PrecisionLand::vehicleLandDetectedCallback, this, std::placeholders::_1));
 
@@ -67,27 +59,31 @@ void PrecisionLand::vehicleLandDetectedCallback(const px4_msgs::msg::VehicleLand
 	_land_detected = msg->landed;
 }
 
-void PrecisionLand::targetPoseCallback(const geometry_msgs::msg::Transform::SharedPtr msg)
+void PrecisionLand::targetPoseCallback()
 {	
 	try {
-        _temp_transform = tf_buffer_->lookupTransform(
+				geometry_msgs::msg::TransformStamped _temp_transform;
+        _temp_transform = _tf_buffer->lookupTransform(
             "tagStandard41h12:0",  // The target frame (child frame)
-            "camera",              // The source frame (parent frame)
+            "x500_mono_cam_down_0/mono_cam/base_link/imager",              // The source frame (parent frame)
             tf2::TimePointZero     // The time point (tf2::TimePointZero for the latest transform)
         );
 
 				auto tag = AprilTag {
-				.position = Eigen::Vector3d(_temp_transform.translation.x, _temp_transform.translation.y, _temp_transform.translation.z),
-				.orientation = Eigen::Quaterniond(_temp_transform.rotation.w, _temp_transform.rotation.x, _temp_transform.rotation.y, _temp_transform.rotation.z),
+				.position = Eigen::Vector3d(_temp_transform.transform.translation.x, _temp_transform.transform.translation.y, _temp_transform.transform.translation.z),
+				.orientation = Eigen::Quaterniond(_temp_transform.transform.rotation.w, _temp_transform.transform.rotation.x, _temp_transform.transform.rotation.y, _temp_transform.transform.rotation.z),
 				.timestamp = _temp_transform.header.stamp,   //use _temp_transform.header.stamp to use the time it is actually recieved  or _node.now() for time of query
 				};
 
 				// Save tag position/orientation in NED world frame
 				_tag = getTagWorld(tag);
+				RCLCPP_INFO(_node.get_logger(), "tag.x = %f, tag.y = %f", _tag.position.x(), _tag.position.y());
+				
 
     } catch (const tf2::TransformException &ex) {
-        RCLCPP_WARN(this->get_logger(), "Transform error: %s", ex.what());
+        //RCLCPP_WARN(_node.get_logger(), "Error reciveing tag pose: %s", ex.what());
   }
+	
 }
 
 PrecisionLand::AprilTag PrecisionLand::getTagWorld(const AprilTag& tag)
@@ -121,12 +117,22 @@ PrecisionLand::AprilTag PrecisionLand::getTagWorld(const AprilTag& tag)
 void PrecisionLand::onActivate()
 {
 	generateSearchWaypoints();
+	//-----------------------------------------------------------------
+	_tf_buffer = std::make_unique<tf2_ros::Buffer>(_node.get_clock());
+	_tf_listener = std::make_shared<tf2_ros::TransformListener>(*_tf_buffer);
+	_timer = _node.create_wall_timer(std::chrono::duration<double>(1.0 / 10.0), std::bind(&PrecisionLand::targetPoseCallback, this));
+	//-----------------------------------------------------------------
+	_tag.position = Eigen::Vector3d(std::numeric_limits<float>::quiet_NaN(),std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::quiet_NaN());
 	switchToState(State::Search);
 }
 
 void PrecisionLand::onDeactivate()
 {
 	// No-op
+	_timer.reset();
+  _tf_buffer.reset();
+  _tf_listener.reset();
+	_tag.position = Eigen::Vector3d(std::numeric_limits<float>::quiet_NaN(),std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::quiet_NaN());
 }
 
 void PrecisionLand::updateSetpoint(float dt_s)
