@@ -90,7 +90,7 @@ colcon build
 # you can do `colcon build --packages-select ${pkg1} ${pkg2}...` to avoid rebuilding other unmodified packages.
 echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
 echo "source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash" >> ~/.bashrc
-source ~/px4_ros2_custom_precisionland/install/setup.bash
+echo "source ~/px4_ros2_custom_precisionland/install/setup.bash" >> ~/.bashrc
 ```
 
 ### Run the simulation
@@ -114,28 +114,14 @@ make px4_sitl gz_x500_mono_cam_down_aruco
 cd ~
 ./QGroundControl-x86_64.AppImage
 
-ros2 run ros_gz_bridge parameter_bridge /camera@sensor_msgs/msg/Image@gz.msgs.Image
-
-ros2 run ros_gz_bridge parameter_bridge /camera_info@sensor_msgs/msg/CameraInfo@ignition.msgs.CameraInfo
-
-ros2 run ros_gz_bridge parameter_bridge /clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock
-
 MicroXRCEAgent udp4 -p 8888
 
 ros2 launch apriltag_ros v4l2_41h12_simulation.launch.yml
 
-ros2 launch precision_land precision_land.launch.py
-
-!!usesim
+ros2 launch precision_land precision_land_simulation.launch.py
 ```
 
 Now you can takeoff and switch to PrecisionlandCustom mode in QGC
-
-(Only for simulation) 
-1. To communicate with raspi connected to the same wifi, 
-go in to ~/PX4-Autopilot/ROMFS/px4fmu_common/init.d-posix/rcS and modify this line
-`uxrce_dds_client start -t udp -h 127.0.0.1 -p $uxrce_dds_port $uxrce_dds_ns`
-replace 127.0.0.1 with the address of your raspberry pi
 
 ## Setting up raspberry pi 4
 
