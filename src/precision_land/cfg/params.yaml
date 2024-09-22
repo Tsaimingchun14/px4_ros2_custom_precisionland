@@ -4,6 +4,6 @@ precision_land:
     vel_p_gain: 1.7
     vel_i_gain: 0.0
     max_velocity: 3.0
-    target_timeout: 5.0
+    target_timeout: 1.5
     delta_position: 0.2
     delta_velocity: 0.2

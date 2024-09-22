@@ -64,24 +64,26 @@ void PrecisionLand::targetPoseCallback()
 	try {
 				geometry_msgs::msg::TransformStamped _temp_transform;
         _temp_transform = _tf_buffer->lookupTransform(
-            "tagStandard41h12:0",  // The target frame (child frame)
-            "x500_mono_cam_down_0/mono_cam/base_link/imager",              // The source frame (parent frame)
-            tf2::TimePointZero     // The time point (tf2::TimePointZero for the latest transform)
+					  "x500_mono_cam_down_0/mono_cam/base_link/imager",  
+            "tagStandard41h12:0",  
+            tf2::TimePointZero     
         );
 
 				auto tag = AprilTag {
 				.position = Eigen::Vector3d(_temp_transform.transform.translation.x, _temp_transform.transform.translation.y, _temp_transform.transform.translation.z),
 				.orientation = Eigen::Quaterniond(_temp_transform.transform.rotation.w, _temp_transform.transform.rotation.x, _temp_transform.transform.rotation.y, _temp_transform.transform.rotation.z),
-				.timestamp = _temp_transform.header.stamp,   //use _temp_transform.header.stamp to use the time it is actually recieved  or _node.now() for time of query
+				.timestamp = _temp_transform.header.stamp
 				};
-
-				// Save tag position/orientation in NED world frame
 				_tag = getTagWorld(tag);
-				RCLCPP_INFO(_node.get_logger(), "tag.x = %f, tag.y = %f", _tag.position.x(), _tag.position.y());
-				
+				RCLCPP_INFO(_node.get_logger(), "State = %s", stateName(_state).c_str());
+				RCLCPP_INFO(_node.get_logger(), "Pose timestamp = %f, current timestamp: %f", _tag.timestamp.seconds(), _node.now().seconds());
+				RCLCPP_INFO(_node.get_logger(), "Camera framen tag position: x = %f, y = %f", tag.position.x(), tag.position.y());
+				RCLCPP_INFO(_node.get_logger(), "NED frame vehicle position: x = %f, y = %f", _vehicle_local_position->positionNed().x(), _vehicle_local_position->positionNed().y());
+				RCLCPP_INFO(_node.get_logger(), "NED frame tag position    : x = %f, y = %f", _tag.position.x(), _tag.position.y());
 
+				
     } catch (const tf2::TransformException &ex) {
-        //RCLCPP_WARN(_node.get_logger(), "Error reciveing tag pose: %s", ex.what());
+        RCLCPP_INFO(_node.get_logger(), "Error reciveing tag pose: %s", ex.what());
   }
 	
 }
@@ -120,7 +122,7 @@ void PrecisionLand::onActivate()
 	//-----------------------------------------------------------------
 	_tf_buffer = std::make_unique<tf2_ros::Buffer>(_node.get_clock());
 	_tf_listener = std::make_shared<tf2_ros::TransformListener>(*_tf_buffer);
-	_timer = _node.create_wall_timer(std::chrono::duration<double>(1.0 / 10.0), std::bind(&PrecisionLand::targetPoseCallback, this));
+	_timer = _node.create_wall_timer(std::chrono::duration<double>(1.0/5.0), std::bind(&PrecisionLand::targetPoseCallback, this));
 	//-----------------------------------------------------------------
 	_tag.position = Eigen::Vector3d(std::numeric_limits<float>::quiet_NaN(),std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::quiet_NaN());
 	switchToState(State::Search);
@@ -157,7 +159,7 @@ void PrecisionLand::updateSetpoint(float dt_s)
 
 	case State::Search: {
 
-		if (!std::isnan(_tag.position.x())) {
+		if (!std::isnan(_tag.position.x()) && !checkTargetTimeout()) {
 			_approach_altitude = _vehicle_local_position->positionNed().z();
 			switchToState(State::Approach);
 			break;
@@ -184,7 +186,8 @@ void PrecisionLand::updateSetpoint(float dt_s)
 		if (target_lost) {
 			RCLCPP_INFO(_node.get_logger(), "Failed! Target lost during %s", stateName(_state).c_str());
 			ModeBase::completed(px4_ros2::Result::ModeFailureOther);
-			switchToState(State::Idle);
+			_search_waypoint_index = 0;
+			switchToState(State::Search);
 			return;
 		}
 
